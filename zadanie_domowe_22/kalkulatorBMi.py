@@ -1,5 +1,5 @@
-waga = int(input("Podaj swoją wagę: "))
-wzrost = int(input("Podaj swój wzrost: "))
+waga = float(input("Podaj swoją wagę: "))
+wzrost = float(input("Podaj swój wzrost: "))
 
 BMI = waga / ((wzrost/100)*(wzrost/100))
 
