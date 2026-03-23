@@ -1,0 +1,29 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'Praca_domowa_25', url: 'https://github.com/PawelRa/cwiczenia-devops.git'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'echo "Build step działa"'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh 'echo "Test step działa"'
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh 'echo "Deploy step działa"'
+            }
+        }
+    }
+}
