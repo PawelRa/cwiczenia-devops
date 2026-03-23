@@ -1,29 +1,68 @@
 pipeline {
     agent any
 
+    environment {
+        APP_DIR = 'zadanie_domowe_25'
+        BUILD_DIR = 'build'
+        DEPLOY_DIR = '/tmp/jenkins-deploy'
+    }
+
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'Praca_domowa_25', url: 'https://github.com/PawelRa/cwiczenia-devops.git'
+                echo 'Kod został pobrany z repozytorium GitHub przez SCM.'
+                sh 'ls -la'
             }
         }
 
         stage('Build') {
             steps {
-                sh 'echo "Build step działa"'
+                dir("${APP_DIR}") {
+                    sh '''
+                        mkdir -p ${BUILD_DIR}
+                        echo "To jest artefakt zbudowany przez Jenkins" > ${BUILD_DIR}/artifact.txt
+                        date >> ${BUILD_DIR}/artifact.txt
+                        cat ${BUILD_DIR}/artifact.txt
+                    '''
+                }
             }
         }
 
         stage('Test') {
             steps {
-                sh 'echo "Test step działa"'
+                dir("${APP_DIR}") {
+                    sh '''
+                        test -f ${BUILD_DIR}/artifact.txt
+                        grep -q "To jest artefakt zbudowany przez Jenkins" ${BUILD_DIR}/artifact.txt
+                        echo "Test zakończony sukcesem"
+                    '''
+                }
             }
         }
 
         stage('Deploy') {
             steps {
-                sh 'echo "Deploy step działa"'
+                dir("${APP_DIR}") {
+                    sh '''
+                        mkdir -p ${DEPLOY_DIR}
+                        cp ${BUILD_DIR}/artifact.txt ${DEPLOY_DIR}/artifact.txt
+                        echo "Plik wdrożony do ${DEPLOY_DIR}"
+                        ls -l ${DEPLOY_DIR}
+                    '''
+                }
             }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline zakończył się sukcesem.'
+        }
+        failure {
+            echo 'Pipeline zakończył się błędem.'
+        }
+        always {
+            archiveArtifacts artifacts: 'zadanie_domowe_25/build/artifact.txt', fingerprint: true
         }
     }
 }
