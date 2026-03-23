@@ -44,3 +44,16 @@ Dodatkowo artefakt został zapisany w Jenkinsie przez `archiveArtifacts`.
 - GitHub
 - Java 21
 - Maven
+
+## Pliki wynikowe pipeline
+
+Po wykonaniu pipeline tworzone są następujące pliki:
+
+- `build/artifact.txt` – artefakt utworzony w etapie Build
+- `build/notification.txt` – plik z informacją o statusie wykonania pipeline
+
+Pliki są widoczne w workspace Jenkins:
+`/var/lib/jenkins/workspace/praca-domowa-25-pipeline/zadanie_domowe_25/build`
+
+Po etapie Deploy artefakt jest kopiowany do katalogu:
+`/tmp/jenkins-deploy`
