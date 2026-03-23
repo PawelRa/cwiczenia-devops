@@ -56,13 +56,34 @@ pipeline {
 
     post {
         success {
+            dir("${APP_DIR}") {
+                sh '''
+                    echo "STATUS: SUCCESS" > ${BUILD_DIR}/notification.txt
+                    echo "JOB: ${JOB_NAME}" >> ${BUILD_DIR}/notification.txt
+                    echo "BUILD NUMBER: ${BUILD_NUMBER}" >> ${BUILD_DIR}/notification.txt
+                    echo "BUILD URL: ${BUILD_URL}" >> ${BUILD_DIR}/notification.txt
+                    cat ${BUILD_DIR}/notification.txt
+                '''
+            }
             echo 'Pipeline zakończył się sukcesem.'
         }
+
         failure {
+            dir("${APP_DIR}") {
+                sh '''
+                    mkdir -p ${BUILD_DIR}
+                    echo "STATUS: FAILURE" > ${BUILD_DIR}/notification.txt
+                    echo "JOB: ${JOB_NAME}" >> ${BUILD_DIR}/notification.txt
+                    echo "BUILD NUMBER: ${BUILD_NUMBER}" >> ${BUILD_DIR}/notification.txt
+                    echo "BUILD URL: ${BUILD_URL}" >> ${BUILD_DIR}/notification.txt
+                    cat ${BUILD_DIR}/notification.txt
+                '''
+            }
             echo 'Pipeline zakończył się błędem.'
         }
+
         always {
-            archiveArtifacts artifacts: 'zadanie_domowe_25/build/artifact.txt', fingerprint: true
+            archiveArtifacts artifacts: 'zadanie_domowe_25/build/*', fingerprint: true
         }
     }
 }
