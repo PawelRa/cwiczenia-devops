@@ -19,19 +19,19 @@ pipeline {
             steps {
                 script {
                     try {
-                        START_TIME = new Date().format("yyyy-MM-dd HH:mm:ss")
-                        echo "Rozpoczęcie pipeline: ${START_TIME}"
+                        env.START_TIME = new Date().format("yyyy-MM-dd HH:mm:ss")
+                        echo "Rozpoczęcie pipeline: ${env.START_TIME}"
 
                         checkout scm
 
-                        COMMIT_AUTHOR = sh(
+                        env.COMMIT_AUTHOR = sh(
                             script: "git log -1 --pretty=format:'%an'",
                             returnStdout: true
                         ).trim()
 
-                        echo "Autor ostatniej zmiany: ${COMMIT_AUTHOR}"
+                        echo "Autor ostatniej zmiany: ${env.COMMIT_AUTHOR}"
                     } catch (err) {
-                        BUILD_STATUS = 'FAILURE'
+                        env.BUILD_STATUS = 'FAILURE'
                         echo "Błąd w etapie Checkout: ${err}"
                         error("Checkout failed")
                     }
@@ -41,12 +41,12 @@ pipeline {
 
         stage('Build') {
             when {
-                expression { BUILD_STATUS == 'SUCCESS' }
+                expression { env.BUILD_STATUS == 'SUCCESS' }
             }
             steps {
                 script {
                     try {
-                        dir("${APP_DIR}") {
+                        dir("${env.APP_DIR}") {
                             sh '''
                                 mkdir -p ${BUILD_DIR}
                                 echo "Wersja aplikacji: ${APP_VERSION}" > ${BUILD_DIR}/artifact.txt
@@ -57,7 +57,7 @@ pipeline {
                             '''
                         }
                     } catch (err) {
-                        BUILD_STATUS = 'FAILURE'
+                        env.BUILD_STATUS = 'FAILURE'
                         echo "Błąd w etapie Build: ${err}"
                         error("Build failed")
                     }
@@ -67,12 +67,12 @@ pipeline {
 
         stage('Test') {
             when {
-                expression { BUILD_STATUS == 'SUCCESS' }
+                expression { env.BUILD_STATUS == 'SUCCESS' }
             }
             steps {
                 script {
                     try {
-                        dir("${APP_DIR}") {
+                        dir("${env.APP_DIR}") {
                             sh '''
                                 test -f ${BUILD_DIR}/artifact.txt
                                 grep -q "Artefakt zbudowany przez Jenkins" ${BUILD_DIR}/artifact.txt
@@ -81,7 +81,7 @@ pipeline {
                             '''
                         }
                     } catch (err) {
-                        BUILD_STATUS = 'FAILURE'
+                        env.BUILD_STATUS = 'FAILURE'
                         echo "Błąd w etapie Test: ${err}"
                         error("Test failed")
                     }
@@ -91,12 +91,12 @@ pipeline {
 
         stage('Deploy') {
             when {
-                expression { BUILD_STATUS == 'SUCCESS' && ENABLE_DEPLOY == 'true' }
+                expression { env.BUILD_STATUS == 'SUCCESS' && env.ENABLE_DEPLOY == 'true' }
             }
             steps {
                 script {
                     try {
-                        dir("${APP_DIR}") {
+                        dir("${env.APP_DIR}") {
                             sh '''
                                 mkdir -p ${DEPLOY_DIR}
                                 cp ${BUILD_DIR}/artifact.txt ${DEPLOY_DIR}/artifact-${APP_VERSION}.txt
@@ -105,7 +105,7 @@ pipeline {
                             '''
                         }
                     } catch (err) {
-                        BUILD_STATUS = 'FAILURE'
+                        env.BUILD_STATUS = 'FAILURE'
                         echo "Błąd w etapie Deploy: ${err}"
                         error("Deploy failed")
                     }
@@ -123,15 +123,15 @@ Pipeline zakończył się sukcesem.
 Job: ${env.JOB_NAME}
 Build: ${env.BUILD_NUMBER}
 Wynik: SUCCESS
-Autor zmian: ${COMMIT_AUTHOR}
-Start: ${START_TIME}
+Autor zmian: ${env.COMMIT_AUTHOR}
+Start: ${env.START_TIME}
 Koniec: ${endTime}
 URL: ${env.BUILD_URL}
 """.stripIndent()
 
                 echo message
 
-                dir("${APP_DIR}") {
+                dir("${env.APP_DIR}") {
                     sh """
                         mkdir -p ${BUILD_DIR}
                         cat > ${BUILD_DIR}/notification.txt <<'EOF'
@@ -142,9 +142,14 @@ EOF
 
                 archiveArtifacts artifacts: 'zadanie_domowe_25/build/*', fingerprint: true
 
-                mail to: "${NOTIFY_EMAIL}",
-                     subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                     body: message
+                try {
+                    mail to: "${env.NOTIFY_EMAIL}",
+                         subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                         body: message
+                } catch (err) {
+                    echo "Nie udało się wysłać e-maila: ${err}"
+                    echo "Powiadomienie zostało zapisane w notification.txt"
+                }
             }
         }
 
@@ -156,15 +161,15 @@ Pipeline zakończył się błędem.
 Job: ${env.JOB_NAME}
 Build: ${env.BUILD_NUMBER}
 Wynik: FAILURE
-Autor zmian: ${COMMIT_AUTHOR}
-Start: ${START_TIME}
+Autor zmian: ${env.COMMIT_AUTHOR}
+Start: ${env.START_TIME}
 Koniec: ${endTime}
 URL: ${env.BUILD_URL}
 """.stripIndent()
 
                 echo message
 
-                dir("${APP_DIR}") {
+                dir("${env.APP_DIR}") {
                     sh """
                         mkdir -p ${BUILD_DIR}
                         cat > ${BUILD_DIR}/notification.txt <<'EOF'
@@ -175,9 +180,14 @@ EOF
 
                 archiveArtifacts artifacts: 'zadanie_domowe_25/build/*', fingerprint: true, onlyIfSuccessful: false
 
-                mail to: "${NOTIFY_EMAIL}",
-                     subject: "FAILURE: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                     body: message
+                try {
+                    mail to: "${env.NOTIFY_EMAIL}",
+                         subject: "FAILURE: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                         body: message
+                } catch (err) {
+                    echo "Nie udało się wysłać e-maila: ${err}"
+                    echo "Powiadomienie zostało zapisane w notification.txt"
+                }
             }
         }
 

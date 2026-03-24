@@ -137,3 +137,9 @@ Wersja zaawansowana rozszerza pipeline o:
 - lepszą dokumentację działania.
 
 Dzięki temu pipeline jest bliższy rozwiązaniom stosowanym w rzeczywistych procesach CI/CD.
+
+## Powiadomienia e-mail
+
+Pipeline zawiera mechanizm wysyłki powiadomień e-mail po sukcesie i niepowodzeniu.
+W przypadku braku konfiguracji SMTP w Jenkinsie błąd wysyłki jest przechwytywany, a informacje
+o wyniku zapisywane są w pliku `notification.txt` oraz widoczne w logach pipeline.
