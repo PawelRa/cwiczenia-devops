@@ -8,7 +8,7 @@ pipeline {
         APP_VERSION = '2.0.0'
         TARGET_ENV = 'dev'
         ENABLE_DEPLOY = 'true'
-        NOTIFY_EMAIL = 'twoj_mail@example.com'
+        NOTIFY_EMAIL = 'pawel@example.com'
         BUILD_STATUS = 'SUCCESS'
     }
 
