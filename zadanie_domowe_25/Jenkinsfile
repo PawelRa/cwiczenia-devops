@@ -10,8 +10,6 @@ pipeline {
         ENABLE_DEPLOY = 'true'
         NOTIFY_EMAIL = 'twoj_mail@example.com'
         BUILD_STATUS = 'SUCCESS'
-        COMMIT_AUTHOR = 'unknown'
-        START_TIME = ''
     }
 
     stages {
@@ -19,17 +17,28 @@ pipeline {
             steps {
                 script {
                     try {
-                        env.START_TIME = new Date().format("yyyy-MM-dd HH:mm:ss")
-                        echo "Rozpoczęcie pipeline: ${env.START_TIME}"
+                        echo "Rozpoczęcie pipeline"
 
+                        // checkout scm pobiera kod z repozytorium skonfigurowanego w Jenkins job
                         checkout scm
 
-                        env.COMMIT_AUTHOR = sh(
+                        // Odczyt autora ostatniego commita z aktualnie pobranego repozytorium
+                        def checkoutAuthor = sh(
                             script: "git log -1 --pretty=format:'%an'",
                             returnStdout: true
                         ).trim()
 
-                        echo "Autor ostatniej zmiany: ${env.COMMIT_AUTHOR}"
+                        echo "Autor ostatniej zmiany: ${checkoutAuthor}"
+
+                        // Zapis autora do pliku pomocniczego, aby można go było odczytać później w sekcji post
+                        dir("${env.APP_DIR}") {
+                            sh """
+                                mkdir -p ${BUILD_DIR}
+                                cat > ${BUILD_DIR}/commit_author.txt <<'EOF'
+${checkoutAuthor}
+EOF
+                            """
+                        }
                     } catch (err) {
                         env.BUILD_STATUS = 'FAILURE'
                         echo "Błąd w etapie Checkout: ${err}"
@@ -117,14 +126,24 @@ pipeline {
     post {
         success {
             script {
+                def startTime = new Date(currentBuild.startTimeInMillis).format("yyyy-MM-dd HH:mm:ss")
                 def endTime = new Date().format("yyyy-MM-dd HH:mm:ss")
+
+                // Autor zmian jest odczytywany z pliku zapisanego w etapie Checkout
+                def author = dir("${env.APP_DIR}") {
+                    sh(
+                        script: "cat ${BUILD_DIR}/commit_author.txt",
+                        returnStdout: true
+                    ).trim()
+                }
+
                 def message = """\
 Pipeline zakończył się sukcesem.
 Job: ${env.JOB_NAME}
 Build: ${env.BUILD_NUMBER}
 Wynik: SUCCESS
-Autor zmian: ${env.COMMIT_AUTHOR}
-Start: ${env.START_TIME}
+Autor zmian: ${author}
+Start: ${startTime}
 Koniec: ${endTime}
 URL: ${env.BUILD_URL}
 """.stripIndent()
@@ -155,14 +174,28 @@ EOF
 
         failure {
             script {
+                def startTime = new Date(currentBuild.startTimeInMillis).format("yyyy-MM-dd HH:mm:ss")
                 def endTime = new Date().format("yyyy-MM-dd HH:mm:ss")
+
+                def author = 'unknown'
+                try {
+                    author = dir("${env.APP_DIR}") {
+                        sh(
+                            script: "cat ${BUILD_DIR}/commit_author.txt",
+                            returnStdout: true
+                        ).trim()
+                    }
+                } catch (err) {
+                    echo "Nie udało się odczytać autora zmian: ${err}"
+                }
+
                 def message = """\
 Pipeline zakończył się błędem.
 Job: ${env.JOB_NAME}
 Build: ${env.BUILD_NUMBER}
 Wynik: FAILURE
-Autor zmian: ${env.COMMIT_AUTHOR}
-Start: ${env.START_TIME}
+Autor zmian: ${author}
+Start: ${startTime}
 Koniec: ${endTime}
 URL: ${env.BUILD_URL}
 """.stripIndent()
