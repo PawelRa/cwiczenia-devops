@@ -4,51 +4,111 @@ pipeline {
     environment {
         APP_DIR = 'zadanie_domowe_25'
         BUILD_DIR = 'build'
-        DEPLOY_DIR = '/tmp/jenkins-deploy'
+        DEPLOY_DIR = '/tmp/jenkins-deploy-advanced'
+        APP_VERSION = '2.0.0'
+        TARGET_ENV = 'dev'
+        ENABLE_DEPLOY = 'true'
+        NOTIFY_EMAIL = 'twoj_mail@example.com'
+        BUILD_STATUS = 'SUCCESS'
+        COMMIT_AUTHOR = 'unknown'
+        START_TIME = ''
     }
 
     stages {
         stage('Checkout') {
             steps {
-                echo 'Kod został pobrany z repozytorium GitHub przez SCM.'
-                sh 'ls -la'
+                script {
+                    try {
+                        START_TIME = new Date().format("yyyy-MM-dd HH:mm:ss")
+                        echo "Rozpoczęcie pipeline: ${START_TIME}"
+
+                        checkout scm
+
+                        COMMIT_AUTHOR = sh(
+                            script: "git log -1 --pretty=format:'%an'",
+                            returnStdout: true
+                        ).trim()
+
+                        echo "Autor ostatniej zmiany: ${COMMIT_AUTHOR}"
+                    } catch (err) {
+                        BUILD_STATUS = 'FAILURE'
+                        echo "Błąd w etapie Checkout: ${err}"
+                        error("Checkout failed")
+                    }
+                }
             }
         }
 
         stage('Build') {
+            when {
+                expression { BUILD_STATUS == 'SUCCESS' }
+            }
             steps {
-                dir("${APP_DIR}") {
-                    sh '''
-                        mkdir -p ${BUILD_DIR}
-                        echo "To jest artefakt zbudowany przez Jenkins" > ${BUILD_DIR}/artifact.txt
-                        date >> ${BUILD_DIR}/artifact.txt
-                        cat ${BUILD_DIR}/artifact.txt
-                    '''
+                script {
+                    try {
+                        dir("${APP_DIR}") {
+                            sh '''
+                                mkdir -p ${BUILD_DIR}
+                                echo "Wersja aplikacji: ${APP_VERSION}" > ${BUILD_DIR}/artifact.txt
+                                echo "Środowisko: ${TARGET_ENV}" >> ${BUILD_DIR}/artifact.txt
+                                echo "Artefakt zbudowany przez Jenkins" >> ${BUILD_DIR}/artifact.txt
+                                date >> ${BUILD_DIR}/artifact.txt
+                                cat ${BUILD_DIR}/artifact.txt
+                            '''
+                        }
+                    } catch (err) {
+                        BUILD_STATUS = 'FAILURE'
+                        echo "Błąd w etapie Build: ${err}"
+                        error("Build failed")
+                    }
                 }
             }
         }
 
         stage('Test') {
+            when {
+                expression { BUILD_STATUS == 'SUCCESS' }
+            }
             steps {
-                dir("${APP_DIR}") {
-                    sh '''
-                        test -f ${BUILD_DIR}/artifact.txt
-                        grep -q "To jest artefakt zbudowany przez Jenkins" ${BUILD_DIR}/artifact.txt
-                        echo "Test zakończony sukcesem"
-                    '''
+                script {
+                    try {
+                        dir("${APP_DIR}") {
+                            sh '''
+                                test -f ${BUILD_DIR}/artifact.txt
+                                grep -q "Artefakt zbudowany przez Jenkins" ${BUILD_DIR}/artifact.txt
+                                grep -q "Wersja aplikacji: ${APP_VERSION}" ${BUILD_DIR}/artifact.txt
+                                echo "Testy zakończone sukcesem"
+                            '''
+                        }
+                    } catch (err) {
+                        BUILD_STATUS = 'FAILURE'
+                        echo "Błąd w etapie Test: ${err}"
+                        error("Test failed")
+                    }
                 }
             }
         }
 
         stage('Deploy') {
+            when {
+                expression { BUILD_STATUS == 'SUCCESS' && ENABLE_DEPLOY == 'true' }
+            }
             steps {
-                dir("${APP_DIR}") {
-                    sh '''
-                        mkdir -p ${DEPLOY_DIR}
-                        cp ${BUILD_DIR}/artifact.txt ${DEPLOY_DIR}/artifact.txt
-                        echo "Plik wdrożony do ${DEPLOY_DIR}"
-                        ls -l ${DEPLOY_DIR}
-                    '''
+                script {
+                    try {
+                        dir("${APP_DIR}") {
+                            sh '''
+                                mkdir -p ${DEPLOY_DIR}
+                                cp ${BUILD_DIR}/artifact.txt ${DEPLOY_DIR}/artifact-${APP_VERSION}.txt
+                                echo "Wdrożenie zakończone sukcesem do ${DEPLOY_DIR}"
+                                ls -l ${DEPLOY_DIR}
+                            '''
+                        }
+                    } catch (err) {
+                        BUILD_STATUS = 'FAILURE'
+                        echo "Błąd w etapie Deploy: ${err}"
+                        error("Deploy failed")
+                    }
                 }
             }
         }
@@ -56,34 +116,73 @@ pipeline {
 
     post {
         success {
-            dir("${APP_DIR}") {
-                sh '''
-                    echo "STATUS: SUCCESS" > ${BUILD_DIR}/notification.txt
-                    echo "JOB: ${JOB_NAME}" >> ${BUILD_DIR}/notification.txt
-                    echo "BUILD NUMBER: ${BUILD_NUMBER}" >> ${BUILD_DIR}/notification.txt
-                    echo "BUILD URL: ${BUILD_URL}" >> ${BUILD_DIR}/notification.txt
-                    cat ${BUILD_DIR}/notification.txt
-                '''
+            script {
+                def endTime = new Date().format("yyyy-MM-dd HH:mm:ss")
+                def message = """\
+Pipeline zakończył się sukcesem.
+Job: ${env.JOB_NAME}
+Build: ${env.BUILD_NUMBER}
+Wynik: SUCCESS
+Autor zmian: ${COMMIT_AUTHOR}
+Start: ${START_TIME}
+Koniec: ${endTime}
+URL: ${env.BUILD_URL}
+""".stripIndent()
+
+                echo message
+
+                dir("${APP_DIR}") {
+                    sh """
+                        mkdir -p ${BUILD_DIR}
+                        cat > ${BUILD_DIR}/notification.txt <<'EOF'
+${message}
+EOF
+                    """
+                }
+
+                archiveArtifacts artifacts: 'zadanie_domowe_25/build/*', fingerprint: true
+
+                mail to: "${NOTIFY_EMAIL}",
+                     subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                     body: message
             }
-            echo 'Pipeline zakończył się sukcesem.'
         }
 
         failure {
-            dir("${APP_DIR}") {
-                sh '''
-                    mkdir -p ${BUILD_DIR}
-                    echo "STATUS: FAILURE" > ${BUILD_DIR}/notification.txt
-                    echo "JOB: ${JOB_NAME}" >> ${BUILD_DIR}/notification.txt
-                    echo "BUILD NUMBER: ${BUILD_NUMBER}" >> ${BUILD_DIR}/notification.txt
-                    echo "BUILD URL: ${BUILD_URL}" >> ${BUILD_DIR}/notification.txt
-                    cat ${BUILD_DIR}/notification.txt
-                '''
+            script {
+                def endTime = new Date().format("yyyy-MM-dd HH:mm:ss")
+                def message = """\
+Pipeline zakończył się błędem.
+Job: ${env.JOB_NAME}
+Build: ${env.BUILD_NUMBER}
+Wynik: FAILURE
+Autor zmian: ${COMMIT_AUTHOR}
+Start: ${START_TIME}
+Koniec: ${endTime}
+URL: ${env.BUILD_URL}
+""".stripIndent()
+
+                echo message
+
+                dir("${APP_DIR}") {
+                    sh """
+                        mkdir -p ${BUILD_DIR}
+                        cat > ${BUILD_DIR}/notification.txt <<'EOF'
+${message}
+EOF
+                    """
+                }
+
+                archiveArtifacts artifacts: 'zadanie_domowe_25/build/*', fingerprint: true, onlyIfSuccessful: false
+
+                mail to: "${NOTIFY_EMAIL}",
+                     subject: "FAILURE: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                     body: message
             }
-            echo 'Pipeline zakończył się błędem.'
         }
 
         always {
-            archiveArtifacts artifacts: 'zadanie_domowe_25/build/*', fingerprint: true
+            echo "Pipeline zakończył działanie. Status końcowy: ${currentBuild.currentResult}"
         }
     }
 }
