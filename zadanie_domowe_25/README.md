@@ -275,3 +275,13 @@ generated-jobs/
     ├── build-feature
     ├── deploy-test
     └── deploy-prod
+
+## Status
+
+Zadanie zostało zrealizowane w zakresie:
+- generowania jobów przez Job DSL,
+- konfiguracji CI/CD,
+- testowego uruchomienia pipeline.
+
+Nie wszystkie joby zostały uruchomione ze względu na brak odpowiednich gałęzi (np. develop, master).
+
