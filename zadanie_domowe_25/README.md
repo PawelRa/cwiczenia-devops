@@ -166,3 +166,112 @@ Wersja zaawansowana rozszerza pipeline o:
 - większą odporność na błędy (np. brak SMTP).
 
 Dzięki temu pipeline jest bliższy rozwiązaniom stosowanym w rzeczywistych procesach CI/CD.
+
+---
+
+# Job DSL – automatyczna konfiguracja środowiska CI/CD
+
+## Opis zadania
+
+W ramach zadania `Praca_domowa_26_zadanie2` przygotowano rozwiązanie wykorzystujące **Job DSL** do automatycznego tworzenia zestawu zadań Jenkins odpowiedzialnych za konfigurację środowiska CI/CD dla projektu.
+
+Celem zadania jest wygenerowanie struktury Jenkins obejmującej:
+- folder projektu,
+- zadania kompilacji i testów dla różnych gałęzi repozytorium,
+- zadanie wdrożenia na środowisko testowe,
+- zadanie wdrożenia na środowisko produkcyjne z ręcznym zatwierdzeniem.
+
+---
+
+## Założenia systemu CI/CD
+
+System CI/CD oparty o Job DSL ma umożliwiać szybkie odtworzenie zestawu zadań Jenkins bez konieczności ręcznej konfiguracji każdego joba w interfejsie WWW.
+
+Wygenerowane zadania mają realizować typowy przepływ:
+1. pobranie kodu z repozytorium,
+2. budowę aplikacji,
+3. uruchomienie testów,
+4. publikację raportów,
+5. wdrożenie na środowisko testowe,
+6. wdrożenie na środowisko produkcyjne po ręcznej akceptacji.
+
+---
+
+## Elementy tworzone przez Job DSL
+
+Skrypt Job DSL tworzy następujące elementy:
+
+### 1. Folder projektu
+Folder grupujący wszystkie zadania związane z projektem, np.:
+- `generated-jobs/project-cicd`
+
+### 2. Zadania build/test dla gałęzi
+Osobne zadania dla wybranych typów gałęzi:
+- `build-develop`
+- `build-master`
+- `build-feature`
+
+Każde z tych zadań:
+- pobiera kod z repozytorium Git,
+- wykonuje kompilację,
+- uruchamia testy,
+- publikuje artefakty lub raporty.
+
+### 3. Zadanie wdrożenia testowego
+Zadanie:
+- `deploy-test`
+
+Służy do symulowanego lub rzeczywistego wdrożenia aplikacji na środowisko testowe.
+
+### 4. Zadanie wdrożenia produkcyjnego
+Zadanie:
+- `deploy-prod`
+
+Zawiera mechanizm ręcznego zatwierdzenia przed wdrożeniem na produkcję.
+
+---
+
+## Wymagane cechy wygenerowanych zadań
+
+### Parametry konfiguracyjne
+Wygenerowane zadania mogą wykorzystywać parametry, np.:
+- `APP_VERSION`
+- `TARGET_ENV`
+- `RUN_TESTS`
+- `FORCE_DEPLOY`
+
+Pozwala to uruchamiać te same zadania w różnych wariantach.
+
+### Wyzwalacze
+Zadania build/test mogą posiadać triggery, np.:
+- okresowe sprawdzanie repozytorium (`SCM polling`)
+- harmonogram (`cron`)
+
+Dzięki temu Jenkins może automatycznie reagować na zmiany w kodzie.
+
+### Integracja z systemem kontroli wersji
+Każde zadanie korzysta z repozytorium Git:
+`https://github.com/PawelRa/cwiczenia-devops.git`
+
+Dzięki temu zadania są bezpośrednio powiązane z kodem źródłowym projektu.
+
+### Publikowanie raportów
+Wygenerowane zadania powinny publikować wyniki działań, np.:
+- zarchiwizowane artefakty,
+- raporty testów,
+- logi wykonania.
+
+---
+
+## Proponowana struktura wygenerowanych zadań
+
+Przykładowa struktura w Jenkins:
+
+```text
+generated-jobs/
+└── project-cicd/
+    ├── build-develop
+    ├── build-master
+    ├── build-feature
+    ├── deploy-test
+    └── deploy-prod
