@@ -60,8 +60,8 @@ pipeline {
     }
 }
 
-pipelineJob('generated-jobs/project-cicd/build-master') {
-    description('Build i test dla gałęzi master')
+pipelineJob('generated-jobs/project-cicd/build-main') {
+    description('Build i test dla gałęzi main')
 
     parameters {
         stringParam('APP_VERSION', '1.0.0', 'Wersja aplikacji')
@@ -81,13 +81,13 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'master', url: 'https://github.com/PawelRa/cwiczenia-devops.git'
+                git branch: 'main', url: 'https://github.com/PawelRa/cwiczenia-devops.git'
             }
         }
 
         stage('Build') {
             steps {
-                sh 'echo "Build dla master, wersja: \${APP_VERSION}"'
+                sh 'echo "Build dla main, wersja: \${APP_VERSION}"'
             }
         }
 
@@ -96,7 +96,7 @@ pipeline {
                 expression { params.RUN_TESTS }
             }
             steps {
-                sh 'echo "Testy dla master"'
+                sh 'echo "Testy dla main"'
                 sh 'mkdir -p reports && echo "<testsuite></testsuite>" > reports/junit.xml'
             }
         }
