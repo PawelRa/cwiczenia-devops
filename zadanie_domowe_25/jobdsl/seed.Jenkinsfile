@@ -10,7 +10,7 @@ pipeline {
 
         stage('Generate jobs') {
             steps {
-                jobDsl targets: 'jobdsl/project_jobs.groovy',
+                jobDsl targets: 'zadanie_domowe_25/jobdsl/project_jobs.groovy',
                        removedJobAction: 'IGNORE',
                        removedViewAction: 'IGNORE',
                        lookupStrategy: 'JENKINS_ROOT'
